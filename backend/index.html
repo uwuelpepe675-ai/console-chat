@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Console — AI Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button class="new-chat-btn" id="newChatBtn">
+        <span class="plus">+</span> New chat
+      </button>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search chats…" />
+      </div>
+    </div>
+
+    <nav class="chat-list" id="chatList"></nav>
+
+    <div class="sidebar-bottom">
+      <button class="settings-btn" id="exportBtn">
+        <span class="gear">⇩</span> Export chat
+      </button>
+      <button class="settings-btn" id="avatarStudioBtn">
+        <span class="gear">◍</span> Avatar studio
+      </button>
+      <button class="settings-btn" id="scenarioStudioBtn">
+        <span class="gear">🎭</span> Scenario studio
+      </button>
+      <button class="settings-btn" id="settingsBtn">
+        <span class="gear">⚙</span> Settings
+      </button>
+      <select class="model-tag" id="providerSelect">
+        <option value="gemini">gemini</option>
+        <option value="groq">groq</option>
+      </select>
+      <div class="model-tag" id="quotaBadge" title="Live quota from the provider's own API"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+      <div class="brand">
+        <span class="brand-avatar" id="brandAvatar">▍</span><span id="aiNameDisplay">console</span><span class="brand-dim">.chat</span>
+      </div>
+      <div class="view-switcher">
+        <button type="button" class="view-tab active" id="chatViewTab" data-view="chat">💬 Chat</button>
+        <button type="button" class="view-tab" id="sandboxViewTab" data-view="sandbox">&lt;/&gt; Sandbox</button>
+      </div>
+      <div class="topbar-right">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">ready</span>
+      </div>
+    </header>
+
+    <section class="chat-scroll" id="chatScroll">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-mark">▍</div>
+        <h1 id="emptyTitle">What are we building?</h1>
+        <p>Ask anything. Attach a picture, build a face in the Avatar Studio, or try a slash command like <code>/joke</code>.</p>
+        <div class="suggestions">
+          <button class="suggestion-chip" data-prompt="Explain how a bhop movement system works in Roblox Luau">Explain a game mechanic</button>
+          <button class="suggestion-chip" data-prompt="Write a Node.js function that debounces API calls">Write some code</button>
+          <button class="suggestion-chip" data-prompt="Give me a clean architecture for a modular ability system">Plan an architecture</button>
+          <button class="suggestion-chip" data-prompt="/help">/help — slash commands</button>
+        </div>
+        <div class="persona-chips" id="emptyPersonaChips"></div>
+      </div>
+
+      <div class="scenario-banner" id="scenarioBanner" style="display:none;">
+        <span id="scenarioBannerText"></span>
+        <button type="button" id="editScenarioBtn" class="icon-btn" title="Edit this scenario">✎</button>
+      </div>
+      <div class="messages" id="messages"></div>
+    </section>
+
+    <!-- In-app coding sandbox -->
+    <section class="sandbox-view" id="sandboxView" style="display:none;">
+      <div class="sandbox-toolbar">
+        <div class="sandbox-tabs" id="sandboxTabs">
+          <button type="button" class="sandbox-tab active" data-pane="html">HTML</button>
+          <button type="button" class="sandbox-tab" data-pane="css">CSS</button>
+          <button type="button" class="sandbox-tab" data-pane="js">JS</button>
+        </div>
+        <div class="sandbox-toolbar-actions">
+          <label class="autorun-toggle">
+            <input type="checkbox" id="autoRunToggle" checked />
+            Auto-run
+          </label>
+          <button type="button" class="sandbox-btn run-btn" id="sandboxRunBtn">▶ Run</button>
+          <button type="button" class="sandbox-btn" id="sandboxUndoBtn" disabled>↶ Undo AI edit</button>
+          <button type="button" class="sandbox-btn" id="sandboxResetBtn">↺ Reset</button>
+          <button type="button" class="sandbox-btn" id="sandboxDownloadBtn">⬇ Download</button>
+          <button type="button" class="sandbox-btn open-btn" id="sandboxCodepenBtn">↗ CodePen</button>
+          <button type="button" class="sandbox-btn ai-toggle-btn active" id="sandboxAiToggleBtn">🤖 AI pair</button>
+          <button type="button" class="sandbox-btn" id="sandboxFullscreenBtn">⛶ Fullscreen</button>
+        </div>
+      </div>
+
+      <div class="sandbox-toolbar sandbox-toolbar-secondary">
+        <div class="sandbox-toolbar-actions">
+          <select id="sandboxTemplateSelect" class="sandbox-select">
+            <option value="">🧰 Load a template…</option>
+            <option value="blank">Blank</option>
+            <option value="hello">Hello world</option>
+            <option value="counter">Counter app</option>
+            <option value="canvas">Canvas doodle</option>
+            <option value="fetch">Fetch API demo</option>
+          </select>
+          <select id="savedSandboxSelect" class="sandbox-select">
+            <option value="">💾 My sandboxes…</option>
+          </select>
+          <button type="button" class="sandbox-btn" id="sandboxSaveBtn">💾 Save as…</button>
+          <button type="button" class="sandbox-btn" id="sandboxDeleteSavedBtn">🗑 Delete saved</button>
+        </div>
+      </div>
+
+      <div class="sandbox-body">
+        <div class="sandbox-editor-pane">
+          <div class="sandbox-editor-gutter" id="sandboxGutter">1</div>
+          <textarea id="sandboxEditor" class="sandbox-editor" spellcheck="false"></textarea>
+        </div>
+        <div class="sandbox-preview-pane">
+          <div class="sandbox-preview-label">Preview</div>
+          <iframe id="sandboxPreviewFrame" class="sandbox-preview-frame" sandbox="allow-scripts"></iframe>
+          <div class="sandbox-console-label">Console <span id="sandboxConsoleCount"></span></div>
+          <div class="sandbox-console" id="sandboxConsole">Run your code to see output here.</div>
+        </div>
+
+        <div class="sandbox-ai-pane" id="sandboxAiPane">
+          <div class="sandbox-ai-header">
+            <span>🤖 Pair program with <span id="sandboxAiName">console</span></span>
+            <button type="button" class="icon-btn" id="sandboxAiClearBtn" title="Clear pair-programming chat">🗑</button>
+          </div>
+          <div class="sandbox-ai-messages" id="sandboxAiMessages">
+            <div class="sandbox-ai-hint">Ask for anything — "add a dark mode toggle", "make the button pulse", "fix the bug in my loop". Code it writes is applied to the tabs automatically and the preview re-runs.</div>
+          </div>
+          <form class="sandbox-ai-form" id="sandboxAiForm">
+            <textarea id="sandboxAiInput" class="sandbox-ai-input" rows="1" placeholder="Tell it what to build or fix…"></textarea>
+            <button type="submit" class="send-btn" id="sandboxAiSendBtn" aria-label="Send">↑</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <form class="composer" id="composerForm">
+      <div class="attach-preview" id="attachPreview" style="display:none;">
+        <img id="attachThumb" alt="Attached image preview" />
+        <button type="button" class="remove-attach-btn" id="removeAttachBtn" aria-label="Remove attached image">✕</button>
+      </div>
+
+      <div class="emoji-picker" id="emojiPicker" style="display:none;"></div>
+
+      <div class="composer-inner">
+        <button type="button" class="attach-btn" id="attachBtn" aria-label="Attach an image" title="Attach an image">📎</button>
+        <button type="button" class="attach-btn" id="genImageBtn" aria-label="Generate an image with Gemini" title="Generate an image from your message (Gemini only)">🖼️</button>
+        <button type="button" class="attach-btn" id="emojiBtn" aria-label="Insert emoji" title="Insert emoji">😊</button>
+        <input type="file" id="fileInput" accept="image/*" hidden />
+        <textarea
+          id="promptInput"
+          class="composer-input"
+          placeholder="Message console.chat…"
+          rows="1"
+        ></textarea>
+        <button type="submit" class="send-btn" id="sendBtn" aria-label="Send message">↑</button>
+      </div>
+      <div class="composer-hint">Enter to send · Shift+Enter for a new line · <code>/help</code> for commands</div>
+    </form>
+  </main>
+
+  <!-- Settings modal -->
+  <div class="modal-backdrop" id="modalBackdrop" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="icon-btn" id="closeSettingsBtn" aria-label="Close settings">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label for="aiNameInput">AI's name</label>
+          <input type="text" id="aiNameInput" placeholder="e.g. Nova, Ember, Console" maxlength="30" />
+        </div>
+
+        <div class="field">
+          <label for="personalityInput">Personality / roleplay instructions</label>
+          <textarea id="personalityInput" rows="4" placeholder="e.g. You are a witty fire elemental who talks in short bursts and loves Roblox game dev. Stay in character."></textarea>
+        </div>
+
+        <div class="field">
+          <label>Quick personas</label>
+          <div class="persona-chips" id="settingsPersonaChips"></div>
+        </div>
+
+        <div class="field">
+          <label>Theme presets</label>
+          <div class="theme-swatches" id="themeSwatches"></div>
+        </div>
+
+        <div class="field-row">
+          <label for="soundToggle">Typing sound</label>
+          <label class="switch">
+            <input type="checkbox" id="soundToggle" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="typeSoundSelect">Typing sound style</label>
+          <select id="typeSoundSelect">
+            <option value="tick">Console tick</option>
+            <option value="blip">Soft blip</option>
+            <option value="click">Mechanical click</option>
+            <option value="chime">Retro chime</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Background music</label>
+          <select id="musicSourceSelect">
+            <option value="off">Off</option>
+            <option value="youtube">YouTube</option>
+            <option value="url">Direct audio URL</option>
+          </select>
+          <input type="text" id="musicYoutubeInput" placeholder="YouTube video URL or ID" style="margin-top:6px; display:none;" />
+          <input type="text" id="musicUrlInput" placeholder="https://example.com/song.mp3" style="margin-top:6px; display:none;" />
+          <div id="musicYoutubeWrap" style="display:none; margin-top:8px;"></div>
+          <audio id="musicAudioEl" loop style="display:none;"></audio>
+          <div class="field-row" id="musicVolumeRow" style="display:none; margin-top:8px;">
+            <label for="musicVolumeInput">Volume</label>
+            <input type="range" id="musicVolumeInput" min="0" max="100" value="50" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="bgImageInput">Background image</label>
+          <input type="file" id="bgImageInput" accept="image/*" />
+          <button type="button" id="bgImageRemoveBtn" style="margin-top:6px;">Remove background image</button>
+        </div>
+
+        <div class="field-row">
+          <label for="bubbleTransparentToggle">Transparent bubbles</label>
+          <label class="switch">
+            <input type="checkbox" id="bubbleTransparentToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="bubbleTextureSelect">Bubble texture</label>
+          <select id="bubbleTextureSelect">
+            <option value="flat">Flat</option>
+            <option value="glass">Glass (blur)</option>
+            <option value="grain">Grain / paper</option>
+            <option value="gradient">Gradient sheen</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <label for="accentColorInput">Accent color</label>
+          <input type="color" id="accentColorInput" value="#f5a623" />
+        </div>
+
+        <div class="field-row">
+          <label for="bgColorInput">Background color</label>
+          <input type="color" id="bgColorInput" value="#101114" />
+        </div>
+
+        <div class="field-row">
+          <label for="userBubbleColorInput">Your message color</label>
+          <input type="color" id="userBubbleColorInput" value="#1d1e23" />
+        </div>
+
+        <div class="field-row">
+          <label for="aiBubbleColorInput">AI message color</label>
+          <input type="color" id="aiBubbleColorInput" value="#17181c" />
+        </div>
+
+        <div class="field-row">
+          <label for="fontSelect">Chat font</label>
+          <select id="fontSelect">
+            <option value="'Inter', sans-serif">Inter (default)</option>
+            <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+            <option value="'Space Grotesk', sans-serif">Space Grotesk</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Comic Sans MS', cursive">Comic Sans</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="reset-btn" id="resetSettingsBtn">Reset to default</button>
+        <button class="save-btn" id="saveSettingsBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avatar Studio modal -->
+  <div class="modal-backdrop" id="avatarModalBackdrop" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Avatar studio</h2>
+        <button class="icon-btn" id="closeAvatarBtn" aria-label="Close avatar studio">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field-row">
+          <label>Editing</label>
+          <div class="type-toggle" id="avatarTargetToggle">
+            <button type="button" class="toggle-opt active" data-target="user">You</button>
+            <button type="button" class="toggle-opt" data-target="ai">AI</button>
+          </div>
+        </div>
+
+        <div class="avatar-preview-wrap">
+          <div class="avatar-preview" id="avatarPreview">AI</div>
+        </div>
+
+        <div class="field-row">
+          <label>Style</label>
+          <div class="type-toggle" id="avatarTypeToggle">
+            <button type="button" class="toggle-opt active" data-type="initials">Initials</button>
+            <button type="button" class="toggle-opt" data-type="emoji">Emoji</button>
+            <button type="button" class="toggle-opt" data-type="image">Upload</button>
+          </div>
+        </div>
+
+        <div class="field" id="avatarInitialsField">
+          <label for="avatarInitialsInput">Initials (1–2 characters)</label>
+          <input type="text" id="avatarInitialsInput" maxlength="2" placeholder="AI" />
+        </div>
+
+        <div class="field" id="avatarEmojiField" style="display:none;">
+          <label>Pick an emoji</label>
+          <div class="emoji-picker embedded" id="avatarEmojiPicker"></div>
+        </div>
+
+        <div class="field" id="avatarImageField" style="display:none;">
+          <label for="avatarFileInput">Upload an image</label>
+          <input type="file" id="avatarFileInput" accept="image/*" />
+        </div>
+
+        <div class="field-row">
+          <label>Shape</label>
+          <div class="type-toggle" id="avatarShapeToggle">
+            <button type="button" class="toggle-opt active" data-shape="circle">Circle</button>
+            <button type="button" class="toggle-opt" data-shape="square">Square</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Background</label>
+          <div class="swatch-row" id="avatarBgSwatches"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="reset-btn" id="avatarResetBtn">Use default</button>
+        <button class="save-btn" id="avatarApplyBtn">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scenario Studio modal -->
+  <div class="modal-backdrop" id="scenarioModalBackdrop" style="display:none;">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h2>🎭 Scenario studio</h2>
+        <button class="icon-btn" id="closeScenarioBtn" aria-label="Close scenario studio">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="scenario-intro">Build a roleplay scenario in any universe — a show, book, game, or something original. Fill in what you know; use the research buttons to have the AI fill in the rest from what it knows, then edit anything before you begin.</p>
+
+        <div class="field">
+          <label for="scenarioSeriesInput">1. Universe / series</label>
+          <div class="inline-field-row">
+            <input type="text" id="scenarioSeriesInput" placeholder="e.g. a cyberpunk detective show, a fantasy academy, your own original world…" />
+            <button type="button" class="sandbox-btn" id="scenarioResearchSettingBtn">🔍 Research setting</button>
+          </div>
+          <textarea id="scenarioSettingOutput" rows="5" placeholder="Setting summary appears here — world, tone, rules, ongoing conflicts. Feel free to edit or write your own."></textarea>
+        </div>
+
+        <div class="field">
+          <label>2. Characters in the scenario</label>
+          <div class="inline-field-row">
+            <input type="text" id="scenarioCharacterNameInput" placeholder="Character name" />
+            <button type="button" class="sandbox-btn" id="scenarioAddCharacterBtn">+ Add character</button>
+          </div>
+          <div class="scenario-character-list" id="scenarioCharacterList"></div>
+        </div>
+
+        <div class="field-row">
+          <label for="scenarioLanguageSelect">3. Language</label>
+          <select id="scenarioLanguageSelect">
+            <option>English</option>
+            <option>Spanish</option>
+            <option>Portuguese</option>
+            <option>French</option>
+            <option>German</option>
+            <option>Japanese</option>
+            <option>Korean</option>
+            <option>Italian</option>
+            <option>Tagalog</option>
+            <option value="__other">Other (type below)</option>
+          </select>
+        </div>
+        <input type="text" id="scenarioLanguageOther" placeholder="Type the language…" style="display:none;" />
+
+        <div class="field">
+          <label for="scenarioArcInput">4. Starting point / arc <span class="optional-tag">optional</span></label>
+          <textarea id="scenarioArcInput" rows="2" placeholder="e.g. before the story begins, partway through a specific arc, some time after it all ends, an entirely original point…"></textarea>
+        </div>
+
+        <div class="field">
+          <label>5. Your character <span class="optional-tag">optional — leave blank to just watch/narrate</span></label>
+          <input type="text" id="scenarioOcNameInput" placeholder="Your character's name" />
+          <textarea id="scenarioOcBackstoryInput" rows="3" placeholder="Backstory — who they are, where they came from…"></textarea>
+          <textarea id="scenarioOcIntegrationInput" rows="3" placeholder="How they fit into the story — relationships to the cast, e.g. &quot;the protagonist's estranged older brother, back after years away&quot;. The cast will treat this as established fact."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="reset-btn" id="scenarioClearBtn">Clear all</button>
+        <button class="save-btn" id="scenarioBeginBtn">🎬 Begin scenario</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
