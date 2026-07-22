@@ -50,7 +50,7 @@ function readGroqQuotaFromHeaders(headers) {
 
 app.use(express.json({ limit: '12mb' }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+app.use(express.static(path.join(__dirname, 'frontend')));
 
 registerAuthRoutes(app);
 
